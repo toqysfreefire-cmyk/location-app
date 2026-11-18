@@ -5,7 +5,7 @@ import java.lang.reflect.Method
 
 object ReflectionUtils {
 
-    fun getMethod(cls: Class<*>, methodName: vararg String): Method? {
+    fun getMethod(cls: Class<*>, vararg methodName: String): Method? {
         for (method in cls.declaredMethods) {
             for (name in methodName) {
                 if (method.name == name) {

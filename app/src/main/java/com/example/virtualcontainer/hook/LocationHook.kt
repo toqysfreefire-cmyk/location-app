@@ -2,7 +2,7 @@
 
 import android.location.LocationListener
 import android.os.Handler
-import java.lang.reflect.Method
+import android.os.Looper
 import java.lang.reflect.Proxy
 
 object LocationHook {
@@ -16,28 +16,27 @@ object LocationHook {
             arrayOf(interfaceClass)
         ) { _, method, args ->
             if (!FakeLocationData.isSpoofingEnabled) {
-                return@NewProxyInstance method.invoke(originalManagerObject, *(args ?: arrayOf()))
-            }
-
-            // যখনই অ্যাপ getLastKnownLocation বা similar মেথড কল করবে
-            when (method.name) {
-                "getLastLocation", "getLastKnownLocation" -> {
-                    // আসল লোকেশনের বদলে ফেক লোকেশন রিটার্ন করুন
-                    return@NewProxyInstance FakeLocationData.getMockLocation()
-                }
-                "requestLocationUpdates" -> {
-                    // যদি অ্যাপ লাইভ লোকেশন আপডেট চায়, তবে ফেক লোকেশন পুশ করুন
-                    for (arg in args!!) {
-                        if (arg is LocationListener) {
-                            Handler().post {
-                                arg.onLocationChanged(FakeLocationData.getMockLocation())
+                method.invoke(originalManagerObject, *(args ?: arrayOf()))
+            } else {
+                when (method.name) {
+                    "getLastLocation", "getLastKnownLocation" -> {
+                        FakeLocationData.getMockLocation()
+                    }
+                    "requestLocationUpdates" -> {
+                        if (args != null) {
+                            for (arg in args) {
+                                if (arg is LocationListener) {
+                                    Handler(Looper.getMainLooper()).post {
+                                        arg.onLocationChanged(FakeLocationData.getMockLocation())
+                                    }
+                                }
                             }
                         }
+                        true
                     }
-                    return@NewProxyInstance true
-                }
-                else -> {
-                    return@NewProxyInstance method.invoke(originalManagerObject, *(args ?: arrayOf()))
+                    else -> {
+                        method.invoke(originalManagerObject, *(args ?: arrayOf()))
+                    }
                 }
             }
         }
