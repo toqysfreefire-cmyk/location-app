@@ -11,7 +11,7 @@
         android:label="Virtual Container Location"
         android:roundIcon="@android:drawable/ic_dialog_map"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+        android:theme="@style/AppTheme">
 
         <activity
             android:name=".ui.MainActivity"

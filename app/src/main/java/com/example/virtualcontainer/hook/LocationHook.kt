@@ -3,6 +3,8 @@
 import android.location.LocationListener
 import android.os.Handler
 import android.os.Looper
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 object LocationHook {
@@ -13,32 +15,37 @@ object LocationHook {
         
         return Proxy.newProxyInstance(
             interfaceClass.classLoader,
-            arrayOf(interfaceClass)
-        ) { _, method, args ->
-            if (!FakeLocationData.isSpoofingEnabled) {
-                method.invoke(originalManagerObject, *(args ?: arrayOf()))
-            } else {
-                when (method.name) {
-                    "getLastLocation", "getLastKnownLocation" -> {
-                        FakeLocationData.getMockLocation()
+            arrayOf(interfaceClass),
+            object : InvocationHandler {
+                override fun invoke(proxy: Any?, method: Method, args: Array<out Any?>?): Any? {
+                    val safeArgs = args?.toList()?.toTypedArray() ?: emptyArray()
+
+                    if (!FakeLocationData.isSpoofingEnabled) {
+                        return method.invoke(originalManagerObject, *safeArgs)
                     }
-                    "requestLocationUpdates" -> {
-                        if (args != null) {
-                            for (arg in args) {
-                                if (arg is LocationListener) {
-                                    Handler(Looper.getMainLooper()).post {
-                                        arg.onLocationChanged(FakeLocationData.getMockLocation())
+
+                    return when (method.name) {
+                        "getLastLocation", "getLastKnownLocation" -> {
+                            FakeLocationData.getMockLocation()
+                        }
+                        "requestLocationUpdates" -> {
+                            if (args != null) {
+                                for (arg in args) {
+                                    if (arg is LocationListener) {
+                                        Handler(Looper.getMainLooper()).post {
+                                            arg.onLocationChanged(FakeLocationData.getMockLocation())
+                                        }
                                     }
                                 }
                             }
+                            true
                         }
-                        true
-                    }
-                    else -> {
-                        method.invoke(originalManagerObject, *(args ?: arrayOf()))
+                        else -> {
+                            method.invoke(originalManagerObject, *safeArgs)
+                        }
                     }
                 }
             }
-        }
+        )
     }
 }
