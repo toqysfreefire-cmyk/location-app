@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Interactive Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        .leaflet-control-geocoder {
+            font-size: 14px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2) !important;
+            border-radius: 8px !important;
+        }
+        .leaflet-control-geocoder-form input {
+            padding: 8px 12px;
+            font-size: 14px;
+            width: 240px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script>
+        var initialLat = 23.8103;
+        var initialLng = 90.4125;
+
+        var map = L.map('map', {
+            zoomControl: true
+        }).setView([initialLat, initialLng], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        var marker = L.marker([initialLat, initialLng], {
+            draggable: true
+        }).addTo(map);
+
+        function notifyLocation(lat, lng) {
+            marker.setLatLng([lat, lng]);
+            if (window.AndroidBridge && window.AndroidBridge.onLocationSelected) {
+                window.AndroidBridge.onLocationSelected(lat, lng);
+            }
+        }
+
+        marker.on('dragend', function (e) {
+            var pos = marker.getLatLng();
+            notifyLocation(pos.lat, pos.lng);
+        });
+
+        map.on('click', function(e) {
+            notifyLocation(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Search Bar (Geocoder)
+        var geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "Search location, area, road..."
+        })
+        .on('markgeocode', function(e) {
+            var center = e.geocode.center;
+            map.setView(center, 16);
+            notifyLocation(center.lat, center.lng);
+        })
+        .addTo(map);
+
+        function setCenter(lat, lng) {
+            map.setView([lat, lng], 15);
+            marker.setLatLng([lat, lng]);
+        }
+    </script>
+</body>
+</html>
